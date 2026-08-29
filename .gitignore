@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+venv/
+.venv/
+
+# Data & models (version these with DVC / Git-LFS instead of raw Git)
+data/processed/
+*.pt
+*.h5
+*.pkl
+
+# MLflow
+mlruns/
+artifacts/
+
+# Logs
+logs/*.log
+
+# Env
+.env
+
+# OS
+.DS_Store
