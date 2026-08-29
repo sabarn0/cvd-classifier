@@ -82,21 +82,21 @@ dvc push
 
 Run the API directly (no Docker) to iterate quickly:
 ```bash
-uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
+uvicorn api.main:app --host 0.0.0.0 --port 9000 --reload
 ```
 
 Test it:
 ```bash
-curl http://localhost:8000/health
+curl http://localhost:9000/health
 
-curl -X POST http://localhost:8000/predict \
+curl -X POST http://localhost:9000/predict \
   -F "file=@/path/to/some/cat_or_dog.jpg;type=image/jpeg"
 ```
 
 Build & run in Docker:
 ```bash
 docker build -t cats-dogs-api .
-docker run -p 8000:8000 -v $(pwd)/models:/app/models:ro cats-dogs-api
+docker run -p 9000:9000 -v $(pwd)/models:/app/models:ro cats-dogs-api
 ```
 
 ## 6. M3 — CI Pipeline (tests, build)
@@ -105,16 +105,12 @@ docker run -p 8000:8000 -v $(pwd)/models:/app/models:ro cats-dogs-api
 make test        # pytest — preprocessing + inference unit tests
 ```
 
-`.github/workflows/ci-cd.yml` already defines the checkout → install →
-`pytest` → `docker build` steps. It's set to `workflow_dispatch` (manual)
-for now; flip on the `push`/`pull_request` triggers when you move to GitHub,
-and uncomment the login/push steps once you've added registry secrets
-(`DOCKERHUB_USERNAME` / `DOCKERHUB_TOKEN`, or switch to GHCR).
+`.github/workflows/ci-cd.yml` defines the checkout → install →
+`pytest` → `docker build` → push to Docker Hub steps.
 
-## 7. M4 — "CD" & Deployment (local-first)
+## 7. M4 — "CD" & Deployment (local-first & GCP VM)
 
-For now, deployment = the local Docker Compose stack, which mirrors what a
-CD pipeline would later push to a registry and roll out:
+For local stack:
 
 ```bash
 make build
@@ -124,10 +120,10 @@ make up
 This starts:
 | Service    | URL                          |
 |------------|-------------------------------|
-| API        | http://localhost:8000/docs   |
+| API        | http://localhost:9000/docs   |
 | MLflow     | http://localhost:5000        |
 | Prometheus | http://localhost:9090        |
-| Grafana    | http://localhost:3000 (admin/admin) |
+| Grafana    | http://localhost:9030 (admin/admin) |
 
 Post-deploy smoke test (health + one prediction call, fails the pipeline on error):
 ```bash

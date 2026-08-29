@@ -4,7 +4,7 @@
 # manual local verification.
 set -euo pipefail
 
-HOST="${1:-http://localhost:8000}"
+HOST="${1:-http://localhost:9000}"
 TEST_IMAGE="${2:-tests/fixtures/sample.jpg}"
 
 echo "== Smoke test against $HOST =="

@@ -7,6 +7,7 @@ venv/
 
 # Data & models (version these with DVC / Git-LFS instead of raw Git)
 data/processed/
+dvc-storage/
 *.pt
 *.h5
 *.pkl

@@ -6,8 +6,9 @@ scikit-learn==1.5.0
 matplotlib==3.9.0
 pillow==10.3.0
 
-# --- Data ---
+# --- Data & Versioning ---
 kagglehub==0.2.9
+dvc==3.67.1
 
 # --- Experiment tracking ---
 mlflow==2.14.1

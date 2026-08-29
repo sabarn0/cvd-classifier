@@ -1,35 +1,33 @@
-# CI/CD pipeline skeleton for when this project moves to GitHub (M3 + M4).
-# It is disabled from auto-running right now (see `on:` block) so it won't
-# fire before secrets/registry are configured -- flip it on when you're ready.
-#
-# Required repo secrets once you enable the push job:
-#   DOCKERHUB_USERNAME, DOCKERHUB_TOKEN   (or use GHCR with GITHUB_TOKEN)
-#
-name: CI-CD
+name: CI-CD Pipeline
 
 on:
-  workflow_dispatch:      # manual trigger for now
-  # push:                 # uncomment to run on every push
-  #   branches: [main]
-  # pull_request:
-  #   branches: [main]
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
 
 env:
   IMAGE_NAME: cats-dogs-api
 
 jobs:
   test-and-build:
+    name: CI - Test & Build Container
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: "pip"
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
       - name: Run unit tests
         run: pytest -q
@@ -37,29 +35,55 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build Docker image
-        run: docker build -t ${{ env.IMAGE_NAME }}:${{ github.sha }} .
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # --- Uncomment once a container registry + secrets are configured ---
-      # - name: Log in to Docker Hub
-      #   uses: docker/login-action@v3
-      #   with:
-      #     username: ${{ secrets.DOCKERHUB_USERNAME }}
-      #     password: ${{ secrets.DOCKERHUB_TOKEN }}
-      #
-      # - name: Push image
-      #   run: |
-      #     docker tag ${{ env.IMAGE_NAME }}:${{ github.sha }} ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest
-      #     docker push ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest
+      - name: Build and Push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
 
-  # --- Deployment stage (M4) -- extend once a target env (kind/minikube/VM) is chosen ---
-  # deploy:
-  #   needs: test-and-build
-  #   if: github.ref == 'refs/heads/main'
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - name: Deploy (example: kubectl apply)
-  #       run: kubectl apply -f k8s/
-  #     - name: Smoke test
-  #       run: bash scripts/smoke_test.sh http://<deployed-host>:8000
+  deploy:
+    name: CD - Deploy to GCP VM
+    needs: test-and-build
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python for smoke tests
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies for smoke tests
+        run: |
+          pip install pillow requests
+
+      - name: Deploy container to GCP VM via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.GCP_VM_HOST }}
+          username: ${{ secrets.GCP_VM_USER }}
+          key: ${{ secrets.GCP_VM_SSH_KEY }}
+          script: |
+            echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest
+            docker stop ${{ env.IMAGE_NAME }} || true
+            docker rm ${{ env.IMAGE_NAME }} || true
+            docker run -d --name ${{ env.IMAGE_NAME }} -p 9000:9000 --restart unless-stopped ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest
+
+      - name: Wait for service to warm up
+        run: sleep 10
+
+      - name: Run post-deploy smoke test
+        run: |
+          bash scripts/smoke_test.sh http://${{ secrets.GCP_VM_HOST }}:9000

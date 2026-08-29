@@ -20,6 +20,6 @@ COPY models/ ./models/
 
 ENV MODEL_PATH=models/model.pt
 ENV LOG_DIR=logs
-EXPOSE 8000
+EXPOSE 9000
 
-CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "9000"]

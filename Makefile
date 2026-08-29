@@ -34,10 +34,10 @@ build:
 
 up:
 	docker compose up -d
-	@echo "API:        http://localhost:8000/docs"
+	@echo "API:        http://localhost:9000/docs"
 	@echo "MLflow:     http://localhost:5000"
 	@echo "Prometheus: http://localhost:9090"
-	@echo "Grafana:    http://localhost:3000 (admin/admin)"
+	@echo "Grafana:    http://localhost:9030 (admin/admin)"
 
 down:
 	docker compose down
