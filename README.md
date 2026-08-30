@@ -1,4 +1,4 @@
-# Cats vs Dogs — End-to-End MLOps Pipeline (v2)
+# Cats vs Dogs — End-to-End MLOps Pipeline (v2) [https://github.com/sabarn0/cvd-classifier]
 
 Binary image classification (cats vs. dogs) for a pet-adoption platform, engineered as an automated, production-grade MLOps pipeline:
 **Data Prep & DVC Versioning** $\rightarrow$ **Experiment Tracking & Model Selection (MLflow)** $\rightarrow$ **FastAPI Microservice** $\rightarrow$ **Containerization (Docker)** $\rightarrow$ **Automated CI/CD (GitHub Actions)** $\rightarrow$ **GCP VM Deployment** $\rightarrow$ **Full-Stack Monitoring (Prometheus & Grafana)**.
