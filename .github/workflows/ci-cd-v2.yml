@@ -95,12 +95,13 @@ jobs:
           script: |
             mkdir -p ~/app-v2/logs ~/app-v2/models ~/app-v2/mlruns
             cd ~/app-v2
+            # Free up disk space from previous build layers and unused images
+            docker rm -f v2-api v2-prometheus v2-grafana v2-mlflow 2>/dev/null || true
+            docker compose -f docker-compose.v2.yml down --remove-orphans 2>/dev/null || true
+            docker system prune -af --volumes 2>/dev/null || true
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
             export DOCKER_IMAGE_V2=${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest
             docker pull $DOCKER_IMAGE_V2
-            # Only stop v2 containers — do NOT touch main stack (cvd-api, cvd-prometheus, etc.)
-            docker rm -f v2-api v2-prometheus v2-grafana v2-mlflow 2>/dev/null || true
-            docker compose -f docker-compose.v2.yml down --remove-orphans 2>/dev/null || true
             docker compose -f docker-compose.v2.yml up -d --remove-orphans --force-recreate
             sleep 10
             # Test API health and run smoke test directly on the VM
