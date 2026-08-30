@@ -2,13 +2,15 @@
 FastAPI inference service for the Cats vs Dogs classifier.
 
 Endpoints:
-    GET  /health   -> service + model status
-    POST /predict  -> multipart image upload -> predicted label + probabilities
-    GET  /metrics  -> Prometheus metrics (scraped by Prometheus)
+    GET  /health       -> service + model status
+    GET  /model-info   -> architecture name, metrics from model_config.json
+    POST /predict      -> multipart image upload -> predicted label + probabilities
+    GET  /metrics      -> Prometheus metrics (scraped by Prometheus)
 
 Run locally:
     uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
 """
+import json
 import logging
 import os
 import time
@@ -19,9 +21,10 @@ from fastapi import FastAPI, File, HTTPException, UploadFile
 from prometheus_client import Counter, Histogram
 from prometheus_fastapi_instrumentator import Instrumentator
 
-from src.inference import load_model, predict, preprocess_image
+from src.inference import load_model, predict, preprocess_image, _get_model_name_from_path
 
 MODEL_PATH = os.environ.get("MODEL_PATH", "models/model.pt")
+CONFIG_PATH = os.environ.get("CONFIG_PATH", "models/model_config.json")
 LOG_DIR = os.environ.get("LOG_DIR", "logs")
 
 # --------------------------------------------------------------------------
@@ -52,20 +55,22 @@ PREDICTION_ERRORS = Counter(
     "prediction_errors_total", "Total number of failed prediction requests"
 )
 
-app = FastAPI(title="Cats vs Dogs Classifier", version="1.0.0")
+app = FastAPI(title="Cats vs Dogs Classifier", version="2.0.0")
 
 # Wires up /metrics with default HTTP request count/latency metrics.
 Instrumentator().instrument(app).expose(app, endpoint="/metrics")
 
 _model = None
+_model_name = "SimpleCNN"
 
 
 @app.on_event("startup")
 def _startup():
-    global _model
+    global _model, _model_name
     if Path(MODEL_PATH).exists():
-        _model = load_model(MODEL_PATH)
-        logger.info(f'"Model loaded from {MODEL_PATH}"')
+        _model_name = _get_model_name_from_path(MODEL_PATH)
+        _model = load_model(MODEL_PATH, device="cpu")  # always CPU for serving
+        logger.info(f'"Model loaded from {MODEL_PATH} (arch={_model_name})"')
     else:
         logger.info(f'"Model file not found at {MODEL_PATH}; /predict will 503 until it exists"')
 
@@ -76,7 +81,18 @@ def health():
         "status": "ok",
         "model_loaded": _model is not None,
         "model_path": MODEL_PATH,
+        "model_arch": _model_name,
     }
+
+
+@app.get("/model-info")
+def model_info():
+    """Return model architecture and metrics from model_config.json."""
+    config_path = Path(CONFIG_PATH)
+    if not config_path.exists():
+        raise HTTPException(status_code=404, detail="model_config.json not found")
+    config = json.loads(config_path.read_text())
+    return config
 
 
 @app.post("/predict")
@@ -91,7 +107,7 @@ async def predict_endpoint(file: UploadFile = File(...)):
 
     start = time.time()
     try:
-        input_tensor = preprocess_image(image_bytes)
+        input_tensor = preprocess_image(image_bytes, model_name=_model_name)
         with PREDICTION_LATENCY.time():
             label, probabilities = predict(_model, input_tensor)
     except Exception as exc:  # noqa: BLE001

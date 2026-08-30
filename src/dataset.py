@@ -6,6 +6,11 @@ Expected layout (produced by data/prepare_data.py):
     data/processed/train/dog/*.jpg
     data/processed/val/cat/*.jpg
     ...
+
+Transforms:
+  - SimpleCNN        : uses [-1, 1] normalization (NORM_MEAN/STD = 0.5)
+  - MobileNetV3Small : uses ImageNet normalization (IMAGENET_MEAN/STD)
+    Use `get_transforms(model_name)` to get the right pair.
 """
 from pathlib import Path
 
@@ -17,10 +22,15 @@ IMG_SIZE = 224
 CLASS_TO_IDX = {"cat": 0, "dog": 1}
 IDX_TO_CLASS = {v: k for k, v in CLASS_TO_IDX.items()}
 
-# Simple normalization (training from scratch, no pretrained backbone).
+# Simple normalization (training SimpleCNN from scratch, no pretrained backbone).
 NORM_MEAN = [0.5, 0.5, 0.5]
 NORM_STD = [0.5, 0.5, 0.5]
 
+# ImageNet normalization required by pretrained MobileNetV3 backbone.
+IMAGENET_MEAN = [0.485, 0.456, 0.406]
+IMAGENET_STD = [0.229, 0.224, 0.225]
+
+# --- Default transforms (SimpleCNN, [-1,1] normalization) ---
 train_transform = transforms.Compose([
     transforms.Resize((IMG_SIZE, IMG_SIZE)),
     transforms.RandomHorizontalFlip(p=0.5),
@@ -35,6 +45,37 @@ eval_transform = transforms.Compose([
     transforms.ToTensor(),
     transforms.Normalize(NORM_MEAN, NORM_STD),
 ])
+
+# --- ImageNet transforms (MobileNetV3Small) ---
+imagenet_train_transform = transforms.Compose([
+    transforms.Resize((IMG_SIZE, IMG_SIZE)),
+    transforms.RandomHorizontalFlip(p=0.5),
+    transforms.RandomRotation(15),
+    transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2),
+    transforms.ToTensor(),
+    transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD),
+])
+
+imagenet_eval_transform = transforms.Compose([
+    transforms.Resize((IMG_SIZE, IMG_SIZE)),
+    transforms.ToTensor(),
+    transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD),
+])
+
+
+def get_transforms(model_name: str):
+    """
+    Return (train_transform, eval_transform) appropriate for the given model.
+
+    Args:
+        model_name: 'SimpleCNN' or 'MobileNetV3Small'
+    Returns:
+        Tuple[transform, transform]
+    """
+    if model_name == "MobileNetV3Small":
+        return imagenet_train_transform, imagenet_eval_transform
+    # Default: SimpleCNN and any future scratch-trained models
+    return train_transform, eval_transform
 
 
 class CatsDogsDataset(Dataset):

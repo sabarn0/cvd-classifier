@@ -23,16 +23,16 @@ import torch.nn as nn
 from sklearn.metrics import confusion_matrix, precision_recall_fscore_support
 from torch.utils.data import DataLoader, Subset
 
-from src.dataset import CatsDogsDataset, IDX_TO_CLASS, eval_transform, train_transform
+from src.dataset import CatsDogsDataset, IDX_TO_CLASS, get_transforms
 from src.inference import save_model_config
-from src.model import SimpleCNN
+from src.model import get_model
 
 
 def get_loader(data_dir, split, transform, batch_size, shuffle, max_samples=None):
     ds = CatsDogsDataset(data_dir, split, transform=transform)
     if max_samples is not None and max_samples < len(ds):
         ds = Subset(ds, list(range(max_samples)))
-    return DataLoader(ds, batch_size=batch_size, shuffle=shuffle, num_workers=2)
+    return DataLoader(ds, batch_size=batch_size, shuffle=shuffle, num_workers=0, pin_memory=True)
 
 
 def run_epoch(model, loader, criterion, optimizer, device, train: bool):
@@ -109,38 +109,53 @@ def plot_curves(history, out_path):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--data-dir", default="data/processed")
+    parser.add_argument("--model-name", default="SimpleCNN", choices=["SimpleCNN", "MobileNetV3Small"])
+    parser.add_argument("--run-name", default=None, help="MLflow run name (e.g. model-1-ep0)")
     parser.add_argument("--epochs", type=int, default=5)
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--lr", type=float, default=1e-3)
+    parser.add_argument("--dropout", type=float, default=0.2)
     parser.add_argument("--max-train-samples", type=int, default=None)
     parser.add_argument("--max-val-samples", type=int, default=None)
     parser.add_argument("--max-test-samples", type=int, default=None)
     parser.add_argument("--model-out", default="models/model.pt")
     parser.add_argument("--config-out", default="models/model_config.json")
-    parser.add_argument("--mlflow-experiment", default="cats-vs-dogs")
+    parser.add_argument("--mlflow-experiment", default="cvd-classifier")
     parser.add_argument("--mlflow-tracking-uri", default="mlruns")
     args = parser.parse_args()
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
+    print(f"Using device: {device}")
 
     mlflow.set_tracking_uri(args.mlflow_tracking_uri)
     mlflow.set_experiment(args.mlflow_experiment)
 
-    train_loader = get_loader(args.data_dir, "train", train_transform, args.batch_size, True, args.max_train_samples)
-    val_loader = get_loader(args.data_dir, "val", eval_transform, args.batch_size, False, args.max_val_samples)
-    test_loader = get_loader(args.data_dir, "test", eval_transform, args.batch_size, False, args.max_test_samples)
+    train_tfm, eval_tfm = get_transforms(args.model_name)
+    train_loader = get_loader(args.data_dir, "train", train_tfm, args.batch_size, True, args.max_train_samples)
+    val_loader = get_loader(args.data_dir, "val", eval_tfm, args.batch_size, False, args.max_val_samples)
+    test_loader = get_loader(args.data_dir, "test", eval_tfm, args.batch_size, False, args.max_test_samples)
 
-    model = SimpleCNN(num_classes=len(IDX_TO_CLASS)).to(device)
+    model_kwargs = {}
+    if args.model_name == "MobileNetV3Small":
+        model_kwargs["dropout"] = args.dropout
+        model_kwargs["freeze_backbone"] = True
+
+    model = get_model(args.model_name, num_classes=len(IDX_TO_CLASS), **model_kwargs).to(device)
     criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+    trainable_params = [p for p in model.parameters() if p.requires_grad]
+    optimizer = torch.optim.Adam(trainable_params, lr=args.lr)
 
-    with mlflow.start_run():
+    run_name = args.run_name or (f"model-1-ep0" if args.model_name == "SimpleCNN" else f"model-2-ep0")
+
+    with mlflow.start_run(run_name=run_name):
         mlflow.log_params({
             "epochs": args.epochs,
             "batch_size": args.batch_size,
             "lr": args.lr,
+            "dropout": args.dropout if args.model_name == "MobileNetV3Small" else "N/A",
             "device": device,
-            "model": "SimpleCNN",
+            "model": args.model_name,
+            "model_name": args.model_name,
             "img_size": 224,
         })
 
@@ -199,6 +214,7 @@ def main():
         Path(args.model_out).parent.mkdir(parents=True, exist_ok=True)
         torch.save(model.state_dict(), args.model_out)
         save_model_config(args.config_out, extra={
+            "model_name": args.model_name,
             "test_acc": test_acc,
             "test_precision": precision,
             "test_recall": recall,

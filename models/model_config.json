@@ -4,8 +4,9 @@
     "1": "dog"
   },
   "img_size": 224,
-  "test_acc": 0.882494004796163,
-  "test_precision": 0.877663772691397,
-  "test_recall": 0.8888888888888888,
-  "test_f1": 0.8832406671961874
+  "model_name": "MobileNetV3Small",
+  "test_acc": 0.9600319744204636,
+  "test_precision": 0.9791840133222315,
+  "test_recall": 0.9400479616306955,
+  "test_f1": 0.9592169657422512
 }
