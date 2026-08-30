@@ -68,21 +68,36 @@ jobs:
         run: |
           pip install pillow requests
 
-      - name: Deploy container to GCP VM via SSH
+      - name: Copy deployment and monitoring configurations to GCP VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.GCP_VM_HOST }}
+          username: ${{ secrets.GCP_VM_USER }}
+          key: ${{ secrets.GCP_VM_SSH_KEY }}
+          target: "~/app"
+          source: "docker-compose.yml,monitoring/"
+
+      - name: Deploy full stack (API + Prometheus + Grafana) on GCP VM
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.GCP_VM_HOST }}
           username: ${{ secrets.GCP_VM_USER }}
           key: ${{ secrets.GCP_VM_SSH_KEY }}
           script: |
+            mkdir -p ~/app/logs
+            cd ~/app
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
-            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest
-            docker stop ${{ env.IMAGE_NAME }} || true
-            docker rm ${{ env.IMAGE_NAME }} || true
-            docker run -d --name ${{ env.IMAGE_NAME }} -p 9000:9000 --restart unless-stopped ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest
+            export DOCKER_IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest
+            docker pull $DOCKER_IMAGE
+            # Stop any standalone container if previously running
+            docker stop ${{ env.IMAGE_NAME }} 2>/dev/null || true
+            docker rm ${{ env.IMAGE_NAME }} 2>/dev/null || true
+            # Deploy API, Prometheus, Grafana, MLflow via Docker Compose
+            docker compose down 2>/dev/null || docker-compose down 2>/dev/null || true
+            docker compose up -d --remove-orphans || docker-compose up -d --remove-orphans
 
-      - name: Wait for service to warm up
-        run: sleep 10
+      - name: Wait for services to warm up
+        run: sleep 15
 
       - name: Run post-deploy smoke test
         run: |

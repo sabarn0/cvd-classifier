@@ -2,12 +2,12 @@ version: "3.9"
 
 services:
   api:
+    image: ${DOCKER_IMAGE:-cats-dogs-api}
     build: .
     container_name: cats-dogs-api
     ports:
       - "9000:9000"
     volumes:
-      - ./models:/app/models:ro
       - ./logs:/app/logs
     environment:
       - MODEL_PATH=models/model.pt
@@ -34,6 +34,9 @@ services:
     container_name: prometheus
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=24h"
     ports:
       - "9090:9090"
     depends_on:

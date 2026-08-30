@@ -5,7 +5,7 @@
   "schemaVersion": 39,
   "version": 1,
   "refresh": "5s",
-  "time": { "from": "now-15m", "to": "now" },
+  "time": { "from": "now-24h", "to": "now" },
   "panels": [
     {
       "id": 1,
