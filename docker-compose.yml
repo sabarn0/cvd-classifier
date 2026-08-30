@@ -4,7 +4,7 @@ services:
   api:
     image: ${DOCKER_IMAGE:-cats-dogs-api}
     build: .
-    container_name: cats-dogs-api
+    container_name: cvd-api
     ports:
       - "9000:9000"
     volumes:
@@ -16,7 +16,7 @@ services:
 
   mlflow:
     image: python:3.11-slim
-    container_name: mlflow-server
+    container_name: cvd-mlflow
     working_dir: /mlflow
     volumes:
       - ./mlruns:/mlflow/mlruns
@@ -31,7 +31,7 @@ services:
 
   prometheus:
     image: prom/prometheus:v2.53.0
-    container_name: prometheus
+    container_name: cvd-prometheus
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     command:
@@ -45,7 +45,7 @@ services:
 
   grafana:
     image: grafana/grafana:11.0.0
-    container_name: grafana
+    container_name: cvd-grafana
     ports:
       - "9030:9030"
     environment:
