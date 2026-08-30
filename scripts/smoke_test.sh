@@ -10,10 +10,10 @@ TEST_IMAGE="${2:-tests/fixtures/sample.jpg}"
 echo "== Smoke test against $HOST =="
 
 echo "-- Health check --"
-HEALTH_RESPONSE=$(curl -s -o /tmp/health.json -w "%{http_code}" "$HOST/health")
-cat /tmp/health.json
+HEALTH_RESPONSE=$(curl -s --connect-timeout 5 --max-time 15 --retry 5 --retry-delay 2 --retry-connrefused -o /tmp/health.json -w "%{http_code}" "$HOST/health" || echo "000")
+if [ -f /tmp/health.json ]; then cat /tmp/health.json; echo ""; fi
 if [ "$HEALTH_RESPONSE" != "200" ]; then
-  echo "Health check FAILED (HTTP $HEALTH_RESPONSE)"
+  echo "Health check FAILED (HTTP $HEALTH_RESPONSE). Could not reach $HOST/health"
   exit 1
 fi
 MODEL_LOADED=$(python3 -c "import json;print(json.load(open('/tmp/health.json'))['model_loaded'])")
@@ -30,9 +30,9 @@ if [ ! -f "$TEST_IMAGE" ]; then
   TEST_IMAGE="/tmp/smoke.jpg"
 fi
 
-PREDICT_RESPONSE=$(curl -s -o /tmp/predict.json -w "%{http_code}" -X POST \
-  -F "file=@${TEST_IMAGE};type=image/jpeg" "$HOST/predict")
-cat /tmp/predict.json
+PREDICT_RESPONSE=$(curl -s --connect-timeout 5 --max-time 15 --retry 3 --retry-delay 2 --retry-connrefused -o /tmp/predict.json -w "%{http_code}" -X POST \
+  -F "file=@${TEST_IMAGE};type=image/jpeg" "$HOST/predict" || echo "000")
+if [ -f /tmp/predict.json ]; then cat /tmp/predict.json; echo ""; fi
 if [ "$PREDICT_RESPONSE" != "200" ]; then
   echo "Prediction check FAILED (HTTP $PREDICT_RESPONSE)"
   exit 1

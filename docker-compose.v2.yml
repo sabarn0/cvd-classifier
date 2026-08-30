@@ -17,7 +17,6 @@ services:
     ports:
       - "7000:7000"
     volumes:
-      - ./models:/app/models:ro
       - ./logs:/app/logs
     environment:
       - MODEL_PATH=models/model.pt
