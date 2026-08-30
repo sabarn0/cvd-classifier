@@ -2,9 +2,9 @@ name: CI-CD Pipeline v2
 
 on:
   push:
-    branches: [main-v2]
+    branches: [main-v2, v2-dev]
   pull_request:
-    branches: [main-v2]
+    branches: [main-v2, v2-dev]
   workflow_dispatch:
 
 env:
@@ -63,7 +63,7 @@ jobs:
   deploy:
     name: CD - Deploy v2 Stack to GCP VM
     needs: test-and-build
-    if: github.ref == 'refs/heads/main-v2' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    if: (github.ref == 'refs/heads/main-v2' || github.ref == 'refs/heads/v2-dev') && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
