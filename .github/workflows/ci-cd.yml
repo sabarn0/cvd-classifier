@@ -89,12 +89,11 @@ jobs:
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
             export DOCKER_IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest
             docker pull $DOCKER_IMAGE
-            # Stop any standalone container if previously running
-            docker stop ${{ env.IMAGE_NAME }} 2>/dev/null || true
-            docker rm ${{ env.IMAGE_NAME }} 2>/dev/null || true
-            # Deploy API, Prometheus, Grafana, MLflow via Docker Compose
-            docker compose down 2>/dev/null || docker-compose down 2>/dev/null || true
-            docker compose up -d --remove-orphans || docker-compose up -d --remove-orphans
+            # Auto-cleanup any old or conflicting containers
+            docker rm -f cvd-api cvd-prometheus cvd-grafana cvd-mlflow cats-dogs-api prometheus grafana mlflow-server 2>/dev/null || true
+            # Deploy API, Prometheus, Grafana, MLflow with Docker Compose
+            docker compose down --remove-orphans 2>/dev/null || true
+            docker compose up -d --remove-orphans --force-recreate
 
       - name: Wait for services to warm up
         run: sleep 15

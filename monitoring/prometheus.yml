@@ -6,4 +6,4 @@ scrape_configs:
   - job_name: "cats-dogs-api"
     metrics_path: /metrics
     static_configs:
-      - targets: ["api:9000"]
+      - targets: ["cvd-api:9000"]
