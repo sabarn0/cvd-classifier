@@ -1,6 +1,6 @@
 version: "3.9"
 
-# v2 stack — all ports in the 80XX range, container names prefixed with v2-
+# v2 stack — all ports in the 70XX range, container names prefixed with v2-
 # Does NOT conflict with the main stack (ports 9000, 5000, 9090, 9030)
 #
 # Usage:
@@ -15,7 +15,7 @@ services:
       dockerfile: Dockerfile.v2
     container_name: v2-api
     ports:
-      - "8000:8000"
+      - "7000:7000"
     volumes:
       - ./models:/app/models:ro
       - ./logs:/app/logs
@@ -36,7 +36,7 @@ services:
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--storage.tsdb.retention.time=24h"
     ports:
-      - "8090:9090"
+      - "7090:9090"
     depends_on:
       - api
     restart: unless-stopped
@@ -45,13 +45,13 @@ services:
     image: grafana/grafana:11.0.0
     container_name: v2-grafana
     ports:
-      - "8030:8030"
+      - "7030:7030"
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
       - GF_AUTH_ANONYMOUS_ENABLED=true
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
-      - GF_SERVER_HTTP_PORT=8030
+      - GF_SERVER_HTTP_PORT=7030
     volumes:
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
     depends_on:

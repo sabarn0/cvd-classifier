@@ -82,20 +82,20 @@ v2-promote-smoke:
 	$(VENV_PY) -m src.select_best --epochs 2 \
 		--max-train-samples 200 --max-val-samples 50 --max-test-samples 50
 
-## Launch MLflow UI on port 8080
+## Launch MLflow UI on port 7080
 v2-mlflow-ui:
-	$(VENV_PY) -m mlflow ui --backend-store-uri mlruns --port 8080
+	$(VENV_PY) -m mlflow ui --backend-store-uri mlruns --port 7080
 
-## Build & start the v2 stack (API:8000 MLflow:8080 Prometheus:8090 Grafana:8030)
+## Build & start the v2 stack (API:7000 MLflow:7080 Prometheus:7090 Grafana:7030)
 v2-build:
 	docker compose -f docker-compose.v2.yml build
 
 v2-up:
 	docker compose -f docker-compose.v2.yml up -d
-	@echo "API:        http://localhost:8000/docs"
-	@echo "Prometheus: http://localhost:8090"
-	@echo "Grafana:    http://localhost:8030 (admin/admin)"
-	@echo "(MLflow: run 'make v2-mlflow-ui' locally on port 8080)"
+	@echo "API:        http://localhost:7000/docs"
+	@echo "Prometheus: http://localhost:7090"
+	@echo "Grafana:    http://localhost:7030 (admin/admin)"
+	@echo "(MLflow: run 'make v2-mlflow-ui' locally on port 7080)"
 
 v2-down:
 	docker compose -f docker-compose.v2.yml down
@@ -105,5 +105,5 @@ v2-logs:
 
 ## Post-deploy smoke test against the v2 API
 v2-smoke-test:
-	bash scripts/smoke_test.sh http://localhost:8000
+	bash scripts/smoke_test.sh http://localhost:7000
 
