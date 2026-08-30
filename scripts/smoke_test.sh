@@ -16,9 +16,9 @@ if [ "$HEALTH_RESPONSE" != "200" ]; then
   echo "Health check FAILED (HTTP $HEALTH_RESPONSE). Could not reach $HOST/health"
   exit 1
 fi
-MODEL_LOADED=$(python3 -c "import json;print(json.load(open('/tmp/health.json'))['model_loaded'])")
-if [ "$MODEL_LOADED" != "True" ]; then
-  echo "Health check FAILED: model_loaded=$MODEL_LOADED"
+
+if ! grep -q '"model_loaded":[ ]*true' /tmp/health.json; then
+  echo "Health check FAILED: model_loaded is not true"
   exit 1
 fi
 echo "Health check OK"
@@ -26,7 +26,8 @@ echo "Health check OK"
 echo "-- Prediction check --"
 if [ ! -f "$TEST_IMAGE" ]; then
   echo "Test image $TEST_IMAGE not found, generating a throwaway one..."
-  python3 -c "from PIL import Image; Image.new('RGB', (224,224), (120,80,40)).save('/tmp/smoke.jpg')"
+  echo "/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=" | base64 -d > /tmp/smoke.jpg 2>/dev/null || \
+  python3 -c "import base64; open('/tmp/smoke.jpg', 'wb').write(base64.b64decode('/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA='))" 2>/dev/null || true
   TEST_IMAGE="/tmp/smoke.jpg"
 fi
 
@@ -35,6 +36,11 @@ PREDICT_RESPONSE=$(curl -s --connect-timeout 5 --max-time 15 --retry 3 --retry-d
 if [ -f /tmp/predict.json ]; then cat /tmp/predict.json; echo ""; fi
 if [ "$PREDICT_RESPONSE" != "200" ]; then
   echo "Prediction check FAILED (HTTP $PREDICT_RESPONSE)"
+  exit 1
+fi
+
+if ! grep -q '"label":' /tmp/predict.json; then
+  echo "Prediction check FAILED: no label field in response"
   exit 1
 fi
 echo "Prediction check OK"

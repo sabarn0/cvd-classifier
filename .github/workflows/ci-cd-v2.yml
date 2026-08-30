@@ -84,7 +84,7 @@ jobs:
           username: ${{ secrets.GCP_VM_USER }}
           key: ${{ secrets.GCP_VM_SSH_KEY }}
           target: "~/app-v2"
-          source: "docker-compose.v2.yml,monitoring/prometheus.v2.yml,monitoring/grafana/,scripts/"
+          source: "docker-compose.v2.yml,monitoring/prometheus.v2.yml,monitoring/grafana/,scripts/,tests/fixtures/"
 
       - name: Deploy v2 stack on GCP VM (70XX ports)
         uses: appleboy/ssh-action@v1.0.3
