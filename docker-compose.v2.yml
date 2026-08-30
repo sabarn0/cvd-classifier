@@ -19,6 +19,7 @@ services:
     volumes:
       - ./logs:/app/logs
     environment:
+      - PORT=7000
       - MODEL_PATH=models/model.pt
       - CONFIG_PATH=models/model_config.json
       - LOG_DIR=logs
