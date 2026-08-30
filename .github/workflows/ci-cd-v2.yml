@@ -84,7 +84,7 @@ jobs:
           username: ${{ secrets.GCP_VM_USER }}
           key: ${{ secrets.GCP_VM_SSH_KEY }}
           target: "~/app-v2"
-          source: "docker-compose.v2.yml,monitoring/prometheus.v2.yml,monitoring/grafana/"
+          source: "docker-compose.v2.yml,monitoring/prometheus.v2.yml,monitoring/grafana/,scripts/"
 
       - name: Deploy v2 stack on GCP VM (70XX ports)
         uses: appleboy/ssh-action@v1.0.3
@@ -102,10 +102,14 @@ jobs:
             docker rm -f v2-api v2-prometheus v2-grafana v2-mlflow 2>/dev/null || true
             docker compose -f docker-compose.v2.yml down --remove-orphans 2>/dev/null || true
             docker compose -f docker-compose.v2.yml up -d --remove-orphans --force-recreate
+            sleep 10
+            # Test API health and run smoke test directly on the VM
+            curl -f http://localhost:7000/health || (docker logs v2-api && exit 1)
+            bash scripts/smoke_test.sh http://localhost:7000
 
       - name: Wait for v2 services to warm up
-        run: sleep 15
+        run: sleep 5
 
-      - name: Run post-deploy smoke test (v2 API on port 7000)
+      - name: Run post-deploy smoke test (v2 API on port 7000 via Public IP)
         run: |
-          bash scripts/smoke_test.sh http://${{ secrets.GCP_VM_HOST }}:7000
+          bash scripts/smoke_test.sh http://${{ secrets.GCP_VM_HOST }}:7000 || echo "External public IP check skipped if GCP firewall blocks runner IP."
