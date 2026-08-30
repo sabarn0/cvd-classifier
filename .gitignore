@@ -21,8 +21,19 @@ artifacts/
 # Logs
 logs/*.log
 
+# Temp / test uploads
+*.jpg
+*.jpeg
+*.png
+!tests/fixtures/*.jpg
+!tests/fixtures/*.jpeg
+!tests/fixtures/*.png
+
 # Env
 .env
+
+# Misc
+misc/
 
 # OS
 .DS_Store
