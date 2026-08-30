@@ -8,11 +8,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements-v2.txt .
+COPY requirements.txt .
 # Install CPU-only torch for the container (GPU not available at serve time / edge)
 RUN pip install --no-cache-dir torch==2.3.1 torchvision==0.18.1 \
     --index-url https://download.pytorch.org/whl/cpu && \
-    pip install --no-cache-dir -r requirements-v2.txt \
+    pip install --no-cache-dir -r requirements.txt \
     --index-url https://pypi.org/simple \
     --extra-index-url https://pypi.org/simple
 
